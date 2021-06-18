@@ -16,6 +16,39 @@ path_pickled_dataset = "..\data\dblp.v12.small.pickle"
 
 path_csv_folder = "..\data"
 
+path_countries = "..\data\country.txt"
+
+cities_blacklist = ["university"]
+
+def load_countries():
+    '''
+    Updates the city blacklist with all names of countries (and their parts)
+    Returns code -> country dictionary
+    '''
+
+    print("Loading countries dataset and updating blacklist")
+
+    countries = []
+    code_to_country = {}
+    country_to_code = {}
+
+    with open(path_countries, encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            split_line = line.split(" (")
+            country = split_line[0]
+            code = split_line[1].split(")")[0]
+            code_to_country[code] = country
+            country_to_code[country] = code
+            countries.append(country)
+
+            for part_of_country_name in country.split(" "):
+                if part_of_country_name == "":
+                    continue
+                cities_blacklist.append(clean_string_cities(part_of_country_name))
+    return code_to_country, country_to_code
+
+
 def get_prefixes():
     '''
     Outputs and returns all prefixes in the data_set (except indexed_abstract)
@@ -35,16 +68,27 @@ def main():
     '''
     Takes the big arxiv dataset and transforms it to a CSV that Neo4J can import as  a knowledge graph
     '''
-    dict = compress_to_dict(5000000)
+    code_to_country, country_to_code = load_countries()
+    dict = compress_to_dict(500000000)
     dict_all_cities, city_to_country, list_cities = load_cities_data()
-    transform_dict_to_csv(dict_all_cities, city_to_country, dict)
+    transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, dict)
 
 
-def org_to_unique_city(org, dict_all_cities, city_to_country, max_words_in_city_name = 3):
+def org_to_unique_city(org, dict_all_cities, city_to_country, country_to_code, max_words_in_city_name = 3):
     '''
     Given an org name, splits it into all single words and checks if any of them are a city
     Retuns the unique name of that city and country code
     '''
+    # Remove all non-alphabet characters
+    org_only_alphabet = ""
+    for i in org:
+        if i.isalpha():
+            org_only_alphabet += i
+        else:
+            org_only_alphabet += " "
+
+    org = org_only_alphabet
+
     words = org.replace(",", " ").replace("\t", " ").split(" ")
     words = [word for word in words if word != ""]
 
@@ -58,9 +102,17 @@ def org_to_unique_city(org, dict_all_cities, city_to_country, max_words_in_city_
 
     for possible_name in possible_names:
         if(possible_name in dict_all_cities):
+            if possible_name in cities_blacklist:
+                continue
+
             found_city_name = True
             unique_name = dict_all_cities[possible_name]
             country = city_to_country[unique_name]
+
+    if not found_city_name:
+        for possible_name in words:
+            if(possible_name in country_to_code):
+                country = country_to_code[possible_name]
 
     return unique_name, country
 
@@ -102,22 +154,25 @@ def load_cities_data():
         for line in lines:
 
             # First element is an id, get rid of it
-            row = line.replace("\t", ",").split(",")[2:-1]
-            unique_name = clean_string_cities(line.replace("\t", ",").split(",")[1])
+            row = line.split("\t")
+            unique_name = clean_string_cities(row[2])
+
+            if(unique_name in cities_blacklist):
+                continue
+
             list_cities.append(unique_name)
+            names = [row[1], row[2]] + row[3].split(',')
 
             country_idx = -1
-            for (idx, element) in enumerate(row):
+            for (idx, element) in enumerate(names):
 
-                # After names for the city we have: latitude, longitude, feature class, feature code, COUNTRY CODE
                 if isfloat(element):
-                    country_idx = idx + 4
                     break
 
                 if(element not in dict_all_cities):
                     dict_all_cities[clean_string_cities(element)] = unique_name
 
-            city_to_country[unique_name] = row[country_idx]
+            city_to_country[unique_name] = row[8]
 
     return dict_all_cities, city_to_country, list_cities
 
@@ -132,7 +187,7 @@ def isfloat(value):
     except ValueError:
         return False
 
-def transform_dict_to_csv(dict_all_cities, city_to_country, dataset = None):
+def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, dataset = None):
     '''
     Takes the processed dataset and turns it into several CSVs
     '''
@@ -162,7 +217,7 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, dataset = None):
 
         for author in paper["authors"]:
             org = clean_string(author["org"])
-            city, country =  org_to_unique_city(org, dict_all_cities, city_to_country)
+            city, country =  org_to_unique_city(org, dict_all_cities, city_to_country, country_to_code)
             authors.append([idx, clean_string(author["name"]), org, city, country])
 
 
