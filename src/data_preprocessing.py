@@ -1,11 +1,18 @@
 import ijson
 import pickle
+import csv
+import os
+import sys
+
+import gc
 
 # Path to the 12gb arxiv dataset
 path_dataset = "..\data\dblp.v12.json"
 
 # Path were we will store the dataset as a python dict
 path_pickled_dataset = "..\data\dblp.v12.pickle"
+
+path_csv_folder = "..\data"
 
 def get_prefixes():
     '''
@@ -26,20 +33,70 @@ def main():
     '''
     Takes the big arxiv dataset and transforms it to a CSV that Neo4J can import as  a knowledge graph
     '''
-    transform_dict_to_knowledge_graph()
+    transform_dict_to_csv()
 
 
 
 
-def transform_dict_to_knowledge_graph():
+def transform_dict_to_csv(dataset = None):
     '''
-    Takes the processed dataset and turns it into a knowledge graph stored as a csv
+    Takes the processed dataset and turns it into several CSVs
     '''
-    inputfile = open(path_pickled_dataset,'rb')
-    dataset = pickle.load(inputfile)
-    inputfile.close()
 
-    print(dataset)
+    if dataset is None:
+        print("\nLoad dictionary, this might take a long time")
+        inputfile = open(path_pickled_dataset,'rb')
+
+        # disable garbage collector
+        gc.disable()
+
+        dataset = pickle.load(inputfile)
+
+        gc.enable()
+        inputfile.close()
+
+    papers = [["paper_id", "title", "year"]]
+    authors = [["paper_id", "name", "org"]]
+    keywords = [["paper_id", "name", "weight"]]
+
+    print("Transform dictionary")
+    for (idx,paper) in enumerate(dataset):
+        if(idx % 100000 == 0):
+            print(f"\r>> Transformed {idx/1000000.0} million entries", end = '', flush=True)
+
+        papers.append([idx, clean_string(paper["title"]), paper["year"]])
+
+        for author in paper["authors"]:
+            authors.append([idx, clean_string(author["name"]), clean_string(author["org"])])
+
+        for keyword in paper["keywords"]:
+            keywords.append([idx, clean_string(keyword["name"]), keyword["weight"]])
+
+    #print(authors)
+    #return
+
+    print("Storing CSVs:")
+    export_to_csv(papers, "papers")
+    export_to_csv(authors, "authors")
+    export_to_csv(keywords, "keywords")
+
+def clean_string(string):
+    return string.replace(",","")
+
+
+def export_to_csv(data, name):
+    '''
+    Takes a list of lines and stores that as a csv in the csv folder under <name>.csv
+    '''
+    filename = os.path.join(path_csv_folder, name + ".csv")
+    print(f"Writing to {filename}")
+    with open(filename, mode='w', encoding='utf-8') as file:
+        csv_writer = csv.writer(file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        for row in data:
+            csv_writer.writerow(row)
+
+
 
 def compress_to_dict(max_lines_to_process = -1):
     '''
@@ -52,7 +109,7 @@ def compress_to_dict(max_lines_to_process = -1):
         parser = ijson.parse(input_file)
         for prefix, event, value in parser:
             if(processed_lines % 100000 == 0):
-                print(f"\r>> You have finished {processed_lines} lines", end = '', flush=True)
+                print(f"\r>> Read {processed_lines/1000000.0} million lines", end = '', flush=True)
 
             if(processed_lines == max_lines_to_process):
                 break
@@ -60,8 +117,8 @@ def compress_to_dict(max_lines_to_process = -1):
             if "indexed_abstract" not in prefix:
                 # Open or close a new paper
                 if prefix == "item" and event == "start_map":
-                    curr_paper = {"title":"", "authors":[], "keywords":[], "id":0, "year":0,
-                    "venue":{"id":0, "name":""}, "publisher":""}
+                    curr_paper = {"title":"", "authors":[], "keywords":[], "arxiv_id":0, "year":0,
+                    "venue":{"arxiv_id":0, "name":""}, "publisher":""}
                 elif prefix == "item" and event == "end_map":
                     data_set.append(curr_paper)
 
@@ -77,7 +134,7 @@ def compress_to_dict(max_lines_to_process = -1):
 
                 # Authors
                 elif prefix == "item.authors.item" and event == "start_map":
-                    curr_author = {"name":"", "org":"", "id":0}
+                    curr_author = {"name":"", "org":"", "arxiv_id":0}
                 elif prefix == "item.authors.item" and event == "end_map":
                     curr_paper["authors"].append(curr_author)
                 elif prefix == "item.authors.item.name":
@@ -85,7 +142,7 @@ def compress_to_dict(max_lines_to_process = -1):
                 elif prefix == "item.authors.item.org":
                     curr_author["org"] = value
                 elif prefix == "item.authors.item.id":
-                    curr_author["id"] = value
+                    curr_author["arxiv_id"] = value
 
                 # Everything else
                 elif prefix == "item.publisher":
@@ -93,7 +150,7 @@ def compress_to_dict(max_lines_to_process = -1):
                 elif prefix == "item.title":
                     curr_paper["title"] = value
                 elif prefix == "item.id":
-                    curr_paper["id"] = value
+                    curr_paper["arxiv_id"] = value
                 elif prefix == "item.year":
                     curr_paper["year"] = value
                 elif prefix == "item.year":
@@ -103,14 +160,17 @@ def compress_to_dict(max_lines_to_process = -1):
                 elif prefix == "item.venue.raw":
                     curr_paper["venue"]["name"] = value
                 elif prefix == "item.venue.id":
-                    curr_paper["venue"]["id"] = value
+                    curr_paper["venue"]["arxiv_id"] = value
 
             processed_lines += 1
 
+
+        print("Storing dictionary (pickle)")
         # Store dataset as dict
         outputfile = open(path_pickled_dataset,'wb')
         pickle.dump(data_set,outputfile)
         outputfile.close()
+        return data_set
 
 
 if __name__ == "__main__":
