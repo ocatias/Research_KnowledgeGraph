@@ -9,8 +9,10 @@ import gc
 # Path to the 12gb arxiv dataset
 path_dataset = "..\data\dblp.v12.json"
 
+path_dataset_cities = "..\data\cities15000.txt"
+
 # Path were we will store the dataset as a python dict
-path_pickled_dataset = "..\data\dblp.v12.pickle"
+path_pickled_dataset = "..\data\dblp.v12.small.pickle"
 
 path_csv_folder = "..\data"
 
@@ -33,12 +35,104 @@ def main():
     '''
     Takes the big arxiv dataset and transforms it to a CSV that Neo4J can import as  a knowledge graph
     '''
-    transform_dict_to_csv()
+    dict = compress_to_dict(5000000)
+    dict_all_cities, city_to_country, list_cities = load_cities_data()
+    transform_dict_to_csv(dict_all_cities, city_to_country, dict)
 
 
+def org_to_unique_city(org, dict_all_cities, city_to_country, max_words_in_city_name = 3):
+    '''
+    Given an org name, splits it into all single words and checks if any of them are a city
+    Retuns the unique name of that city and country code
+    '''
+    words = org.replace(",", " ").replace("\t", " ").split(" ")
+    words = [word for word in words if word != ""]
 
+    possible_names = []
+    for i in range(1, max_words_in_city_name + 1):
+        possible_names += string_to_windows(words, i)
 
-def transform_dict_to_csv(dataset = None):
+    found_city_name = False
+    unique_name = ""
+    country = ""
+
+    for possible_name in possible_names:
+        if(possible_name in dict_all_cities):
+            found_city_name = True
+            unique_name = dict_all_cities[possible_name]
+            country = city_to_country[unique_name]
+
+    return unique_name, country
+
+def string_to_windows(input_list, windows_size):
+    '''
+    Slides a window over a list and returns everything inside that window
+    '''
+    output_list = []
+    for idx, element in enumerate(input_list):
+        if idx + windows_size > len(input_list):
+            break
+        else:
+            output_list.append(clean_string_cities(' '.join([input_list[i] for i in range(idx, idx + windows_size)])))
+
+    return output_list
+
+def clean_string_cities(city):
+    return city.lower().replace(" ", "")
+
+def load_cities_data():
+    '''
+    Loads the cities15000 dataset
+    Returns: dict_all_cities, city_to_country, list_cities
+    '''
+
+    # Contains all cities from the dataset, key is possible city names, returns unique city names
+    dict_all_cities = {}
+
+    # List of all unique city names
+    list_cities = []
+
+    # Dictionary
+    #   Key: Unique city name
+    #   Value: Country Code
+    city_to_country = {}
+
+    with open(path_dataset_cities, encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+
+            # First element is an id, get rid of it
+            row = line.replace("\t", ",").split(",")[2:-1]
+            unique_name = clean_string_cities(line.replace("\t", ",").split(",")[1])
+            list_cities.append(unique_name)
+
+            country_idx = -1
+            for (idx, element) in enumerate(row):
+
+                # After names for the city we have: latitude, longitude, feature class, feature code, COUNTRY CODE
+                if isfloat(element):
+                    country_idx = idx + 4
+                    break
+
+                if(element not in dict_all_cities):
+                    dict_all_cities[clean_string_cities(element)] = unique_name
+
+            city_to_country[unique_name] = row[country_idx]
+
+    return dict_all_cities, city_to_country, list_cities
+
+def isfloat(value):
+    '''
+    Check if a string is a float
+    Source: https://stackoverflow.com/a/20929881/6515970
+    '''
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+def transform_dict_to_csv(dict_all_cities, city_to_country, dataset = None):
     '''
     Takes the processed dataset and turns it into several CSVs
     '''
@@ -56,33 +150,33 @@ def transform_dict_to_csv(dataset = None):
         inputfile.close()
 
     papers = [["paper_id", "title", "year"]]
-    authors = [["paper_id", "name", "org"]]
+    authors = [["paper_id", "name", "org", "city", "country"]]
     keywords = [["paper_id", "name", "weight"]]
 
     print("Transform dictionary")
     for (idx,paper) in enumerate(dataset):
-        if(idx % 100000 == 0):
+        if(idx % 5000 == 0):
             print(f"\r>> Transformed {idx/1000000.0} million entries", end = '', flush=True)
 
         papers.append([idx, clean_string(paper["title"]), paper["year"]])
 
         for author in paper["authors"]:
-            authors.append([idx, clean_string(author["name"]), clean_string(author["org"])])
+            org = clean_string(author["org"])
+            city, country =  org_to_unique_city(org, dict_all_cities, city_to_country)
+            authors.append([idx, clean_string(author["name"]), org, city, country])
+
 
         for keyword in paper["keywords"]:
             keywords.append([idx, clean_string(keyword["name"]), keyword["weight"]])
 
-    #print(authors)
-    #return
 
-    print("Storing CSVs:")
+    print("\nStoring CSVs:")
     export_to_csv(papers, "papers")
     export_to_csv(authors, "authors")
     export_to_csv(keywords, "keywords")
 
 def clean_string(string):
     return string.replace(",","")
-
 
 def export_to_csv(data, name):
     '''
@@ -95,8 +189,6 @@ def export_to_csv(data, name):
 
         for row in data:
             csv_writer.writerow(row)
-
-
 
 def compress_to_dict(max_lines_to_process = -1):
     '''
