@@ -30,7 +30,8 @@
 ```
 
   This is for windows. If you are on another OS then you need to change `..\bin\neo4j-admin`.
-    - Create a database with name DATABASENAME
+
+  - Create a database with name DATABASENAME
 
 ## Data Processing:
 Changes to the datasets:
