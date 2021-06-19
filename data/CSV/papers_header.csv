@@ -1,1 +1,1 @@
-paperId:ID(Paper),title,year:INT
+paperId:ID(Paper),title,year:LONG

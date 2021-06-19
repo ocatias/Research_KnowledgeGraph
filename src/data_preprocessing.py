@@ -6,6 +6,9 @@ import sys
 
 import gc
 
+import time
+
+
 # Path to the 12gb arxiv dataset
 path_dataset = "..\data\dblp.v12.json"
 
@@ -69,7 +72,7 @@ def main():
     Takes the big arxiv dataset and transforms it to a CSV that Neo4J can import as  a knowledge graph
     '''
     code_to_country, country_to_code = load_countries()
-    dict = compress_to_dict(5000)
+    dict = compress_to_dict(1e7)
     dict_all_cities, city_to_country, list_cities = load_cities_data()
     transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, list_cities, dict)
 
@@ -142,7 +145,6 @@ def ensure_is_int_or_empty(input):
         return input
     return ""
 
-
 def load_cities_data():
     '''
     Loads the cities15000 dataset
@@ -173,6 +175,8 @@ def load_cities_data():
 
             list_cities.append(unique_name)
             names = [row[1], row[2]] + row[3].split(',')
+
+
 
             country_idx = -1
             for (idx, element) in enumerate(names):
@@ -219,13 +223,9 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
         gc.enable()
         inputfile.close()
 
-    # papers = [["paper_id", "title", "year"]]
-    # authors = [["paper_id", "name", "org", "city", "country"]]
-    # keywords = [["paper_id", "name", "weight"]]
     papers = []
     authors = []
     keywords = []
-
     paper_keyword_relations = []
     paper_author_relations = []
 
@@ -239,7 +239,7 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
     print("Transform dictionary")
     for (id,paper) in enumerate(dataset):
         if(id % 5000 == 0):
-            print(f"\r>> Transformed {id/1000000.0} million entries", end = '', flush=True)
+            print(f"\r>> Transformed {id/1e6} million entries", end = '', flush=True)
 
         papers.append([id, clean_string(paper["title"]), ensure_is_int_or_empty(paper["year"])])
 
@@ -288,6 +288,7 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
     cities =  list(map(lambda x: [x], list_cities))
     countries = list(map(lambda x: [x], list(country_to_code.values())))
     export_to_csv(cities, "cities")
+
     export_to_csv(countries, "countries")
 
     cities_countries = []
@@ -297,8 +298,14 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
     export_to_csv(cities_countries, "cities_countries")
 
 
+# These symbols might confuse the import into Neo4f
+# we remove them
+forbidden_symbols = [',', '"', "'", '`', '’', '´', "\{", "\}", '"', '“', '”', '\\']
+
 def clean_string(string):
-    return string.replace(",","").replace("\"", "").replace("'", "")
+    for symbol in forbidden_symbols:
+        string = string.replace(symbol, '')
+    return string
 
 def export_to_csv(data, name):
     '''
@@ -307,9 +314,10 @@ def export_to_csv(data, name):
     filename = os.path.join(path_csv_folder, name + ".csv")
     print(f"Writing to {filename}")
     with open(filename, mode='w', encoding='utf-8', errors='ignore') as file:
-        csv_writer = csv.writer(file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer = csv.writer(file, delimiter=",", quotechar='"', quoting=csv.QUOTE_NONE, escapechar =" ")
 
         for row in data:
+            #print(row[1].encode('utf-8', 'ignore'))
             csv_writer.writerow(row)
 
 def compress_to_dict(max_lines_to_process = -1):
@@ -322,8 +330,8 @@ def compress_to_dict(max_lines_to_process = -1):
     with open(path_dataset, "rb") as input_file:
         parser = ijson.parse(input_file)
         for prefix, event, value in parser:
-            if(processed_lines % 100000 == 0):
-                print(f"\r>> Read {processed_lines/1000000.0} million lines", end = '', flush=True)
+            if(processed_lines % 1e5 == 0):
+                print(f"\r>> Read {processed_lines/1e6} million lines", end = '', flush=True)
 
             if(processed_lines == max_lines_to_process):
                 break
@@ -362,7 +370,7 @@ def compress_to_dict(max_lines_to_process = -1):
                 elif prefix == "item.publisher":
                     curr_paper["publisher"] = value
                 elif prefix == "item.title":
-                    curr_paper["title"] = value
+                    curr_paper["title"] = clean_string(value)
                 elif prefix == "item.id":
                     curr_paper["arxiv_id"] = value
                 elif prefix == "item.year":

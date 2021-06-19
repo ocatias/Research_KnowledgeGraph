@@ -23,12 +23,14 @@
 3. Take all files in `data/CSV` and export them into Neo4j using the admin tool:
     - Create project and DBMS
     - Click on the three points next to the DBMS: Open Folder / DBMS
-    - Copy the files into bin
-    - `cd bin`
+    - Copy the files into import
+    - Start a terminal here and run
 ```
-      neo4j-admin import --database ResearchSmall --nodes=Papers="papers_header.csv,papers.csv" --nodes=Authors="authors_header.csv,authors.csv" --nodes=Keywords="keywords_header.csv,keywords.csv" --nodes=Cities="cities_header.csv,cities.csv" --nodes=Countries="countries_header.csv,countries.csv"   --relationships=AUTHEREDBY="paper_author_header.csv,paper_author.csv" --relationships=ISABOUT="paper_keyword_header.csv,paper_keyword.csv" --relationships=WORKSIN="authors_cities_header.csv,authors_cities.csv" --relationships=ISIN="cities_countries_header.csv,cities_countries.csv"
+      ..\bin\neo4j-admin import --database DATABASENAME --nodes=Papers="papers_header.csv,papers.csv" --nodes=Authors="authors_header.csv,authors.csv" --nodes=Keywords="keywords_header.csv,keywords.csv" --nodes=Cities="cities_header.csv,cities.csv" --nodes=Countries="countries_header.csv,countries.csv"   --relationships=AUTHEREDBY="paper_author_header.csv,paper_author.csv" --relationships=ISABOUT="paper_keyword_header.csv,paper_keyword.csv" --relationships=WORKSIN="authors_cities_header.csv,authors_cities.csv" --relationships=ISIN="cities_countries_header.csv,cities_countries.csv"
 ```
-
+    (this is for windows, you need to change `..\bin\neo4j-admin` if you are on another system)  
+    - Create a databese with name DATABASENAME
 
 ## Data Processing:
-- Add ``Kosovo (XK)`` to cities15000
+- Add `Kosovo (XK)` to Countries
+- Fix tabs in entry 3110143 in cities1500
