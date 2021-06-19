@@ -18,7 +18,7 @@
 
 ## How to generate the knowledge graph
 
-1. Download datasets [cities15000](http://download.geonames.org/export/dump/) and [dblp.v12](https://www.aminer.org/citation). Put into `data`
+1. Download dataset [dblp.v12](https://www.aminer.org/citation) and put into `data`
 2. Do the preprocessing:  `cd src` and `python data_preprocessing.py`
 3. Take all files in `data/CSV` and export them into Neo4j using the admin tool:
     - Create project and DBMS
