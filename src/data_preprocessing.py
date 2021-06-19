@@ -72,7 +72,7 @@ def main():
     Takes the big arxiv dataset and transforms it to a CSV that Neo4J can import as  a knowledge graph
     '''
     code_to_country, country_to_code = load_countries()
-    dict = compress_to_dict(1e7)
+    dict = compress_to_dict(-1)
     dict_all_cities, city_to_country, list_cities = load_cities_data()
     transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, list_cities, dict)
 
@@ -239,7 +239,7 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
     print("Transform dictionary")
     for (id,paper) in enumerate(dataset):
         if(id % 5000 == 0):
-            print(f"\r>> Transformed {id/1e6} million entries", end = '', flush=True)
+            print(f"\r>> Transformed {id/1e6} million entries  ", end = '', flush=True)
 
         papers.append([id, clean_string(paper["title"]), ensure_is_int_or_empty(paper["year"])])
 
@@ -300,12 +300,13 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
 
 # These symbols might confuse the import into Neo4f
 # we remove them
-forbidden_symbols = [',', '"', "'", '`', '’', '´', "\{", "\}", '"', '“', '”', '\\']
+forbidden_symbols = [',', '"', "'", '`', '’', '´', "{", "}", '"', '“', '”', '\\', '$', '^', '\n']
 
 def clean_string(string):
-    for symbol in forbidden_symbols:
-        string = string.replace(symbol, '')
-    return string
+    #for symbol in forbidden_symbols:
+    #    string = string.replace(symbol, '')
+    #return string
+    return ''.join(list([i for i in string if i.isalpha() or i.isnumeric() or i == " " or i == ":" or i == "(" or i == ")"]))
 
 def export_to_csv(data, name):
     '''
@@ -314,7 +315,7 @@ def export_to_csv(data, name):
     filename = os.path.join(path_csv_folder, name + ".csv")
     print(f"Writing to {filename}")
     with open(filename, mode='w', encoding='utf-8', errors='ignore') as file:
-        csv_writer = csv.writer(file, delimiter=",", quotechar='"', quoting=csv.QUOTE_NONE, escapechar =" ")
+        csv_writer = csv.writer(file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
         for row in data:
             #print(row[1].encode('utf-8', 'ignore'))
