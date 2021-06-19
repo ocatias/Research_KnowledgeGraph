@@ -29,7 +29,7 @@
       ..\bin\neo4j-admin import --database DATABASENAME --nodes=Papers="papers_header.csv,papers.csv" --nodes=Authors="authors_header.csv,authors.csv" --nodes=Keywords="keywords_header.csv,keywords.csv" --nodes=Cities="cities_header.csv,cities.csv" --nodes=Countries="countries_header.csv,countries.csv"   --relationships=AUTHEREDBY="paper_author_header.csv,paper_author.csv" --relationships=ISABOUT="paper_keyword_header.csv,paper_keyword.csv" --relationships=WORKSIN="authors_cities_header.csv,authors_cities.csv" --relationships=ISIN="cities_countries_header.csv,cities_countries.csv"
 ```
 
-    This is for windows. If you are on another OS then you need to change `..\bin\neo4j-admin`.
+  This is for windows. If you are on another OS then you need to change `..\bin\neo4j-admin`.
     - Create a database with name DATABASENAME
 
 ## Data Processing:
