@@ -38,19 +38,12 @@ WHERE n.name = '{0}' AND n.name = m.name AND ID(n) <> ID(m)
 WITH n,m, path, count(path) as cnt
 WHERE NOT (n)-[:SAMEPERSON]-(m) AND  cnt > 0 AND NONE (x IN nodes(path) WHERE 'Keywords' in Labels(x)) AND NONE (x IN nodes(path) WHERE 'Countries' in Labels(x)) AND (NONE (x IN nodes(path) WHERE 'Cities' in Labels(x)) or SINGLE  (x IN nodes(path) WHERE 'Cities' in Labels(x)))
 CREATE (n)-[r:SAMEPERSON]->(m)
-WITH n, path
-MATCH  (m:Authors)
-WHERE n.name = m.name
-return n,m, path""".format(name)
+""".format(name)
 
-    made_changes = False
     result = session.run(query)
     while(len(result.data()) > 0):
-        made_changes = True
-        result = session.run(query)
+       result = session.run(query)
 
-    if made_changes:
-        apply_sameperson_transitivity(session, True)
 
 with driver.session() as session:
     print("Session started")
