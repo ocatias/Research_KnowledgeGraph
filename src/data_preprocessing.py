@@ -3,11 +3,9 @@ import pickle
 import csv
 import os
 import sys
-
 import gc
-
 import time
-
+from numpy import random
 
 # Path to the 12gb arxiv dataset
 path_dataset = "..\data\dblp.v12.json"
@@ -15,13 +13,16 @@ path_dataset = "..\data\dblp.v12.json"
 path_dataset_cities = "..\data\cities15000.txt"
 
 # Path were we will store the dataset as a python dict
-path_pickled_dataset = "..\data\dblp.v12.small.pickle"
+#path_pickled_dataset = "..\data\dblp.v12.small.pickle"
 
 path_csv_folder = "..\data\CSV"
 
 path_countries = "..\data\country.txt"
 
 cities_blacklist = ["university"]
+
+use_entire_dataset = False
+acceptance_rate = 0.02
 
 def load_countries():
     '''
@@ -206,22 +207,22 @@ def isfloat(value):
     except ValueError:
         return False
 
-def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, list_cities, dataset = None):
+def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, list_cities, dataset):
     '''
     Takes the processed dataset and turns it into several CSVs
     '''
 
-    if dataset is None:
-        print("\nLoad dictionary, this might take a long time")
-        inputfile = open(path_pickled_dataset,'rb')
-
-        # disable garbage collector
-        gc.disable()
-
-        dataset = pickle.load(inputfile)
-
-        gc.enable()
-        inputfile.close()
+    # if dataset is None:
+    #     print("\nLoad dictionary, this might take a long time")
+    #     inputfile = open(path_pickled_dataset,'rb')
+    #
+    #     # disable garbage collector
+    #     gc.disable()
+    #
+    #     dataset = pickle.load(inputfile)
+    #
+    #     gc.enable()
+    #     inputfile.close()
 
     papers = []
     authors = []
@@ -343,7 +344,8 @@ def compress_to_dict(max_lines_to_process = -1):
                     curr_paper = {"title":"", "authors":[], "keywords":[], "arxiv_id":0, "year":0,
                     "venue":{"arxiv_id":0, "name":""}, "publisher":""}
                 elif prefix == "item" and event == "end_map":
-                    data_set.append(curr_paper)
+                    if use_entire_dataset or random.rand() <= acceptance_rate:
+                        data_set.append(curr_paper)
 
                 # Keywords
                 elif prefix == "item.fos.item" and event == "start_map":
@@ -388,11 +390,11 @@ def compress_to_dict(max_lines_to_process = -1):
             processed_lines += 1
 
 
-        print("\nStoring dictionary (pickle)")
+        #print("\nStoring dictionary (pickle)")
         # Store dataset as dict
-        outputfile = open(path_pickled_dataset,'wb')
-        pickle.dump(data_set,outputfile)
-        outputfile.close()
+        #outputfile = open(path_pickled_dataset,'wb')
+        #pickle.dump(data_set,outputfile)
+        #outputfile.close()
         return data_set
 
 
