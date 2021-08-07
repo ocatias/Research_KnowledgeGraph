@@ -1,5 +1,5 @@
 # Research_KnowledgeGraph
-
+In this project I create a knowledge graph that models the relations between computer science papers, authors, citites and countries. The resulting knowledge graph has 11 million nodes and contains x million papers. I use logical methods to determine whether two researchers with the same name are the same person, and to compute Erdős numbers. Furthermore, I use graph embedding methods to rank the influence of cities on research areas and to detect whether two researchers are the same person. In summary, the logical methods yield good results that can intuitively understood. Unfortunately, the logical methods are very computationally expensive. The embedding methods did not give good results, which I think is mostly due to inaccaruacies with respect to cities in the dataset.
 
 ## Datasets
 - [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv
