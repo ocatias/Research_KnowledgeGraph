@@ -47,6 +47,9 @@ RETURN size(nodes(path)) - 1 LIMIT 1
 ```
 Unfortunately to this requires us to have *CoAuthor* edges between coauthors which is really computationally expensive as that would means that we need to create all possible *SAMEPERSON* edges. Since my computation power is limited, I have done only compute Erdős Numbers for three researchers. For two of those authors I got the same results as [csauthors](csauthors.net) which shows that this method works in principles. The easiest way to get it to efficiently work is to just merge all author nodes that have the same name.
 
+## Ranking the Influence of Cities on Research Area
+For this we compute a graph embedding and use the L2 distance between a city and a keyword (or topic) embedding 
+
 ## Datasets
 - [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv
 ```bibtex
