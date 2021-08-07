@@ -19,7 +19,7 @@ This figure shows the different information stored in the knowledge graph. The o
 
   This is for windows. If you are on another OS then you need to change `..\bin\neo4j-admin`.
 
-## Same Person Detection and Erdős Numbers with Logical Rules
+## Same Person Detection
 The dataset contains many researchers with the same name, but different affiliated organizations. Detecting whether two authors with the same name are the same person is not a trivial problem. Here we use the shortest path distance between two author nodes to decide wether they are the same person. For this we use the following Cypher query:
 ```
 MATCH (n:Authors), (m:Authors),
@@ -38,7 +38,14 @@ CREATE (n)-[r:SAMEPERSON]->(m)
 ```
 This means that two authors with the same name *$Name* will be connected by a *SAMEPERSON* edge if there exists a shortest path of length at most 4 between these two nodes. Note that this path is only allowed is not allowed to use some of the edge types. 
 
-
+## Erdős Numbers
+We can compute Erdős numbers with the following query:
+```
+MATCH (n:Authors), (m:Authors), path=allShortestPaths( (n)-[:COAUTHORS*..]-(m))
+WHERE n.name = $Author and m.name = "Paul Erdös"
+RETURN size(nodes(path)) - 1 LIMIT 1
+```
+Unfortunately to this requires us to have *CoAuthor* edges between coauthors which is really computationally expensive as that would means that we need to create all possible *SAMEPERSON* edges. Since my computation power is limited, I have done only compute Erdős Numbers for three researchers. For two of those authors I got the same results as [csauthors](csauthors.net) which shows that this method works in principles. The easiest way to get it to efficiently work is to just merge all author nodes that have the same name.
 
 ## Datasets
 - [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv
