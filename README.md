@@ -16,8 +16,8 @@ This figure shows the different information stored in the knowledge graph. The o
 ```
       ..\bin\neo4j-admin import --database DATABASENAME --nodes=Papers="papers_header.csv,papers.csv" --nodes=Authors="authors_header.csv,authors.csv" --nodes=Keywords="keywords_header.csv,keywords.csv" --nodes=Cities="cities_header.csv,cities.csv" --nodes=Countries="countries_header.csv,countries.csv"   --relationships=AUTHEREDBY="paper_author_header.csv,paper_author.csv" --relationships=ISABOUT="paper_keyword_header.csv,paper_keyword.csv" --relationships=WORKSIN="authors_cities_header.csv,authors_cities.csv" --relationships=ISIN="cities_countries_header.csv,cities_countries.csv"
 ```
-
   This is for windows. If you are on another OS then you need to change `..\bin\neo4j-admin`.
+4. Create a database with name DATABASENAME
 
 ## Same Person Detection
 The dataset contains many researchers with the same name, but different affiliated organizations. Detecting whether two authors with the same name are the same person is not a trivial problem. Here we use the shortest path distance between two author nodes to decide wether they are the same person. First we need to create *WRITTENIN* edges between papers and the cities they were written in.
@@ -98,11 +98,6 @@ Next we rank the cities (with more than 250 papers written in them) according to
 ```
 - [cities15000](http://download.geonames.org/export/dump/) from geonames.org ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)): Contains all cities with a population > 15000
 - [Countries](https://github.com/umpirsky/country-list/blob/master/data/en/country.txt) from umpirsky: A list of all countries and country codes
-
-
-
-
-4. Create a database with name DATABASENAME
 
 ## Data Processing:
 Changes to the datasets:
