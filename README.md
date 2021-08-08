@@ -98,7 +98,7 @@ Next we rank the cities (with more than 250 papers written in them) according to
 }
 ```
 - [cities15000](http://download.geonames.org/export/dump/) from geonames.org ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)): Contains all cities with a population > 15000
-- [Countries](https://github.com/umpirsky/country-list/blob/master/data/en/country.txt) from umpirsky (MIT License): A list of all countries and country codes
+- [Countries](https://github.com/umpirsky/country-list/blob/master/data/en/country.txt) from umpirsky (MIT license): A list of all countries and country codes
 
 ## Data Processing:
 Changes to the datasets:
