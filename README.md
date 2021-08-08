@@ -20,7 +20,13 @@ This figure shows the different information stored in the knowledge graph. The o
   This is for windows. If you are on another OS then you need to change `..\bin\neo4j-admin`.
 
 ## Same Person Detection
-The dataset contains many researchers with the same name, but different affiliated organizations. Detecting whether two authors with the same name are the same person is not a trivial problem. Here we use the shortest path distance between two author nodes to decide wether they are the same person. For this we use the following Cypher query:
+The dataset contains many researchers with the same name, but different affiliated organizations. Detecting whether two authors with the same name are the same person is not a trivial problem. Here we use the shortest path distance between two author nodes to decide wether they are the same person. First we need to create *WRITTENIN* edges between papers and the cities they were written in.
+```
+MATCH (p:Papers)-[:AUTHOREDBY]->(:Authors)-[:WORKSIN]->(c:Cities)
+	WHERE NOT (p)-[:WRITTENIN]->(c)
+	CREATE (p)-[:WRITTENIN]->(c)
+```
+Then we can use the following query to detect whether researchers with the name *$Name* are the same person. If they are, we create a *SAMEPERSON* edges between them.
 ```
 MATCH (n:Authors), (m:Authors),
    path=allShortestPaths( (n)-[:AUTHOREDBY|WORKSIN|WRITTENIN|SAMEPERSON*..4]-(m))
@@ -36,7 +42,9 @@ WHERE
    )
 CREATE (n)-[r:SAMEPERSON]->(m)
 ```
-This means that two authors with the same name *$Name* will be connected by a *SAMEPERSON* edge if there exists a shortest path of length at most 4 between these two nodes. Note that this path is only allowed is not allowed to use some of the edge types. 
+This means that two authors with the same name *$Name* will be connected by a *SAMEPERSON* edge if there exists a shortest path of length at most 4 between these two nodes. Note that this path is only allowed is not allowed to use some of the edge types. Due to the nature of the graph, this will only create *SAMEPERSON* edges in very specific situations. The two most important are the following. First, we create a *SAMEPERSON* edge between two researchers with the same name if one of them wrote a paper that was written in the same city as the other works in. Second, if they share a coauthor.
+
+I also tried using graph embeddings and clustering to create *SAMEPERSON* edges, but this did not give good results.
 
 ## Erdős Numbers
 We can compute Erdős numbers with the following query:
@@ -48,7 +56,19 @@ RETURN size(nodes(path)) - 1 LIMIT 1
 Unfortunately to this requires us to have *CoAuthor* edges between coauthors which is really computationally expensive as that would means that we need to create all possible *SAMEPERSON* edges. Since my computation power is limited, I have done only compute Erdős Numbers for three researchers. For two of those authors I got the same results as [csauthors](csauthors.net) which shows that this method works in principles. The easiest way to get it to efficiently work is to just merge all author nodes that have the same name.
 
 ## Ranking the Influence of Cities on Research Area
-For this we compute a graph embedding and use the L2 distance between a city and a keyword (or topic) embedding 
+For this we compute a graph embedding and use the L2 distance between a city and a keyword (or topic) embedding. I used the following embedding algorithms to embedd the graph in a 2 and 100 dimensional space: Node2Vec, TransE, RGCN and TuckER. 
+
+![Node2Vec_2d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/n2v_2d.png)
+![Node2Vec_100d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/n2v_100d.png)
+
+![TransE_2d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/transE_2d.png)
+![TransE_100d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/transE_100d.png)
+
+![RGCN_2d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/rgcn_2d.png)
+![RGCN_100d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/rgcn_100d.png)
+
+![TuckER_2d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/tucker_2d.png)
+![TuckER_100d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/tucker_100d.png)
 
 ## Datasets
 - [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv
