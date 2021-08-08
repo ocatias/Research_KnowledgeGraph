@@ -56,7 +56,7 @@ RETURN size(nodes(path)) - 1 LIMIT 1
 Unfortunately to this requires us to have *CoAuthor* edges between coauthors which is really computationally expensive as that would means that we need to create all possible *SAMEPERSON* edges. Since my computation power is limited, I have done only compute Erdős Numbers for three researchers. For two of those authors I got the same results as [csauthors](csauthors.net) which shows that this method works in principles. The easiest way to get it to efficiently work is to just merge all author nodes that have the same name.
 
 ## Ranking the Influence of Cities on Research Area
-For this we compute a graph embedding and use the L2 distance between a city and a keyword (or topic) embedding. I used the following embedding algorithms to embedd the graph in a 2 and 100 dimensional space: Node2Vec, TransE, RGCN and TuckER. 
+For this we compute a graph embedding and use the L2 distance between a city and a keyword (or topic) embedding. In the following figures I visualize the embeddings. The left column has the graph embedded into 2d space and the right column into 100d space (with PCA down to 2 dimensions). The algorithms used (from top to bottom) are: Node2Vec, TransE, RGCN and TuckER. For TransE, TuckER and RGCN. 
 
 ![Node2Vec_2d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/n2v_2d.png)
 ![Node2Vec_100d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/n2v_100d.png)
@@ -69,6 +69,22 @@ For this we compute a graph embedding and use the L2 distance between a city and
 
 ![TuckER_2d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/tucker_2d.png)
 ![TuckER_100d](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/tucker_100d.png)
+
+Due to my limited computation power, I only used 2% of the data and a small number of epochs for RGCN, TransE and TuckER (10, 10, and 1, respectively). This might be a big part of the reason why using embeddings and clustering for creating *SAMEPERSON* edges did not work out. 
+
+Next we rank the cities (with more than 250 papers written in them) according to their L2 to some research topics. We report how highly Vienna is ranked with respect to the other cities. Note that for the Node2Vec embeddings the ranking is out of 58 cities and for the other embeddings it is out of 159 cities (unfortunately I used a different dataset split for this). 
+
+| Embedding | Physics | Knowledge Management | Discrete math. | Machine Learning | Ontology | Descr. Logic | Knowl. graph |
+|---|---|---|---|---|---|---|---|
+| Node2Vec (2d) | 16 | 14 | 12 | 6 | 15 | 17 | 17 |
+| Node2Vec (100d) | 18 | 2 | 38 | 23 | 7 | 27 | 21 |
+|---|---|---|---|---|---|---|---|
+| TransE (2d) | 64 | 76 | 74 | 72 | 71 | 70 | 64 |
+| TransE (100d) | 49 | 20 | 76 | 89 | 33 | 30 | 14 |
+| TuckER (2d) | 44 | 45 | 45 | 43 | 66 | 46 | 111 |
+| TuckER (100d) | 122 | 124 | 124 | 124 | 115 | 116 | 80 |
+| RGCN (2d) | 152 | 8 | 8 | 8 | 152 | 152 | 152 |
+| RGCN (100d) | 126 | 124 | 123 | 123 | 126 | 125 | 125 |
 
 ## Datasets
 - [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv
