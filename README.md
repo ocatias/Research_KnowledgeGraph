@@ -1,4 +1,4 @@
-# Research KnowledgeGraph
+# Research Knowledge Graph
 In this project I create a knowledge graph with Python and Neo4j that models the relations between computer science papers, authors, citites and countries. The resulting knowledge graph has 11 million nodes and contains 5 million papers. I use logical methods to determine whether two researchers with the same name are the same person, and to compute Erdős numbers. Furthermore, I use graph embedding methods to rank the influence of cities on research areas and to detect whether two researchers are the same person. In summary, the logical methods yield good results that can intuitively understood.  The embedding methods did not give good results, which I think is mostly due to inaccaruacies with respect to cities in the dataset. Unfortunately, all these methods are very computationally expensive and I could not use them on the entire graph.
 
 ![TransE_graph](https://github.com/ocatias/Research_KnowledgeGraph/blob/main/imgs/TransE_graph.png)
@@ -78,7 +78,6 @@ Next we rank the cities (with more than 250 papers written in them) according to
 |---|---|---|---|---|---|---|---|
 | Node2Vec (2d) | 16 | 14 | 12 | 6 | 15 | 17 | 17 |
 | Node2Vec (100d) | 18 | 2 | 38 | 23 | 7 | 27 | 21 |
-|---|---|---|---|---|---|---|---|
 | TransE (2d) | 64 | 76 | 74 | 72 | 71 | 70 | 64 |
 | TransE (100d) | 49 | 20 | 76 | 89 | 33 | 30 | 14 |
 | TuckER (2d) | 44 | 45 | 45 | 43 | 66 | 46 | 111 |
