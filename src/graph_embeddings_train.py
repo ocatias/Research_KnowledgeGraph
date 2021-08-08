@@ -5,7 +5,7 @@ import pandas as pd
 driver = GraphDatabase.driver('neo4j://localhost:7687', auth=('neo4j', 'pw'))
 
 graphname = "EmbeddingGraph1"
-df_path = r"..\data\DF\graphsage_2dim.pickle"
+df_path = r"..\data\DF\fastRP.pickle"
 
 def delete_graph(session, name):
         print("Deleting graph {0}".format(name))
@@ -32,13 +32,36 @@ def create_graph(session, name):
         print(rec)
 
 def train_fastRP(session, name):
-    result = session.run("""CALL gds.fastRP.stream(\"{0}\",
-{{embeddingDimension: 4,
-iterationWeights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]}})""".format(name))
-    for rec in result.data():
-        # print(rec)
-        if(rec['embedding'] != [0.0, 0.0, 0.0, 0.0]):
-            print(rec)
+    query = \
+"""CALL gds.fastRP.stream(\"{0}\",
+{{embeddingDimension: 512,
+iterationWeights: [1, 2, 3],
+nodeLabels: ["Papers", "Authors", "Keywords", "Cities", "Countries"],
+relationshipTypes: ["ISABOUT", "AUTHEREDBY", "WORKSIN", "WRITTENIN", "ISIN"],
+normalizationStrength: -1,
+randomSeed: 1246546
+}})""".format(name)
+    results = session.run(query)
+    # Store results
+    train_results_df = pd.DataFrame([dict(r) for r in results])
+    train_results_df.to_pickle(df_path)
+    print(train_results_df)
+
+
+def create_node_properties(session, name):
+    """
+    GraphSage needs at least one node property so we will add the degree as a property
+    """
+    query = \
+"""
+CALL gds.degree.mutate(
+  'EmbeddingGraph1',
+  {
+    mutateProperty: 'degree'
+  }
+) YIELD nodePropertiesWritten
+"""
+    session.run(query)
 
 def train_node2vec(session, name, emb_dim = 100):
     print("Training node2vec on {0}, dim: {1}".format(name, emb_dim))
@@ -48,6 +71,7 @@ def train_node2vec(session, name, emb_dim = 100):
 iterations: 100
 }})""".format(name, emb_dim))
 
+    result = session.run(query)
     # Store results
     train_results_df = pd.DataFrame([dict(r) for r in result])
     train_results_df.to_pickle(df_path)
@@ -55,22 +79,27 @@ iterations: 100
 def train_graphsage(session, name, emb_dim = 100):
     print("Training GraphSage on {0}, emb_dim: {1}".format(name, emb_dim))
     query = \
+"""CALL gds.beta.graphSage.train(
+'{0}',
+{{
+modelName: 'graphSage',
+featureProperties: ['degree'],
+embeddingDimension: {1},
+sampleSizes: [100, 50],
+epochs: 2
+}})""".format(name, emb_dim)
+    print(query)
+    session.run(query)
+
+    query = \
 """CALL gds.beta.graphSage.stream(
 '{0}',
 {{
-modelName: 'exampleTrainModel1',
-degreeAsProperty: True,
-aggregator: 'mean',
-activationFunction: 'sigmoid',
-embeddingDimension: {1},
-sampleSizes: [200, 500, 1000],
-epochs: 1
-}})""".format(name, emb_dim)
-
+modelName: 'graphSage'
+}})""".format(name)
+    print(query)
+    print("Streaming model")
     results = session.run(query)
-    for rec in results.data():
-        print(rec)
-
     # Store results
     train_results_df = pd.DataFrame([dict(r) for r in results])
     train_results_df.to_pickle(df_path)
@@ -78,5 +107,7 @@ epochs: 1
 with driver.session() as session:
     print("Session started")
     print("Result will be store in {0}".format(df_path))
+    delete_graph(session, graphname)
     create_graph(session, graphname)
-    train_graphsage(session, graphname, 2)
+    #create_node_properties(session, graphname)
+    train_fastRP(session, graphname)

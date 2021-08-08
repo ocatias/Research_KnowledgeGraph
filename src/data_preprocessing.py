@@ -75,8 +75,8 @@ def main():
     code_to_country, country_to_code = load_countries()
     dict = compress_to_dict(-1)
     dict_all_cities, city_to_country, list_cities = load_cities_data()
-    transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, list_cities, dict)
-
+    # transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, list_cities, dict)
+    export_csv_for_pykeen(dict_all_cities, city_to_country, country_to_code, list_cities, dict)
 
 def org_to_unique_city(org, dict_all_cities, city_to_country, country_to_code, max_words_in_city_name = 3):
     '''
@@ -211,19 +211,6 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
     '''
     Takes the processed dataset and turns it into several CSVs
     '''
-
-    # if dataset is None:
-    #     print("\nLoad dictionary, this might take a long time")
-    #     inputfile = open(path_pickled_dataset,'rb')
-    #
-    #     # disable garbage collector
-    #     gc.disable()
-    #
-    #     dataset = pickle.load(inputfile)
-    #
-    #     gc.enable()
-    #     inputfile.close()
-
     papers = []
     authors = []
     keywords = []
@@ -298,6 +285,49 @@ def transform_dict_to_csv(dict_all_cities, city_to_country, country_to_code, lis
 
     export_to_csv(cities_countries, "cities_countries")
 
+def export_csv_for_pykeen(dict_all_cities, city_to_country, country_to_code, list_cities, dataset):
+    '''
+    Takes the processed dataset and turns it one CSV for pykeen
+    '''
+
+    relations = []
+
+    cities = []
+
+    print("Transform dictionary")
+    for (id,paper) in enumerate(dataset):
+        if(id % 5000 == 0):
+            print(f"\r>> Transformed {id/1e6} million entries  ", end = '', flush=True)
+
+        paper_name = ("(P){0} ({1})".format(clean_string(paper["title"]), ensure_is_int_or_empty(paper["year"])))
+
+        for author in paper["authors"]:
+            org = clean_string(author["org"])
+            city, _ =  org_to_unique_city(org, dict_all_cities, city_to_country, country_to_code)
+
+            author_name = "(A){0}: {1} ({2})".format(clean_string(author["name"]),clean_string(author["org"]), city)
+
+            # Only store author information if we know their city
+            # Keep track of all cities so we can create the corresponding countries
+            if city != '':
+                city_name = "(CI)" + city
+                relations.append([paper_name, "AUTHOREDBY", author_name])
+                relations.append([paper_name, "WRITTENIN", city_name])
+                relations.append([author_name, "WORKSIN", city_name])
+                cities.append(city)
+
+        for keyword in paper["keywords"]:
+            keyword_name = clean_string(keyword["name"])
+            relations.append([paper_name, "ISABOUT", "(K)" + keyword_name])
+
+    # Remove duplicates from cities list
+    cities = list(dict.fromkeys(cities))
+    for city in cities:
+        relations.append(["(CI)" + city, "ISIN", "(CO)" + city_to_country[city]])
+
+    print("\n")
+    export_to_csv(relations, "relations_for_pykeen_final", '\t')
+
 
 # These symbols might confuse the import into Neo4f
 # we remove them
@@ -309,18 +339,22 @@ def clean_string(string):
     #return string
     return ''.join(list([i for i in string if i.isalpha() or i.isnumeric() or i == " " or i == ":" or i == "(" or i == ")"]))
 
-def export_to_csv(data, name):
+def export_to_csv(data, name, delimiter = ","):
     '''
     Takes a list of lines and stores that as a csv in the csv folder under <name>.csv
     '''
     filename = os.path.join(path_csv_folder, name + ".csv")
     print(f"Writing to {filename}")
     with open(filename, mode='w', encoding='utf-8', errors='ignore') as file:
-        csv_writer = csv.writer(file, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer = csv.writer(file, delimiter=delimiter, quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
         for row in data:
             #print(row[1].encode('utf-8', 'ignore'))
             csv_writer.writerow(row)
+
+# Caution must accept is buggy. It is no always the case that all must accept authors / keywords get accepted
+must_accept_authors = []
+must_accept_keywords = ["Physics", "Knowledge graph", "Discrete mathematics", "Ontology", "Description logic", "Knowledge management"]
 
 def compress_to_dict(max_lines_to_process = -1):
     '''
@@ -338,13 +372,14 @@ def compress_to_dict(max_lines_to_process = -1):
             if(processed_lines == max_lines_to_process):
                 break
 
+            must_accept = False
             if "indexed_abstract" not in prefix:
                 # Open or close a new paper
                 if prefix == "item" and event == "start_map":
                     curr_paper = {"title":"", "authors":[], "keywords":[], "arxiv_id":0, "year":0,
                     "venue":{"arxiv_id":0, "name":""}, "publisher":""}
                 elif prefix == "item" and event == "end_map":
-                    if use_entire_dataset or random.rand() <= acceptance_rate:
+                    if must_accept or use_entire_dataset or random.rand() <= acceptance_rate:
                         data_set.append(curr_paper)
 
                 # Keywords
@@ -353,6 +388,8 @@ def compress_to_dict(max_lines_to_process = -1):
                 elif prefix == "item.fos.item" and event == "end_map":
                     curr_paper["keywords"].append(curr_keyword)
                 elif prefix == "item.fos.item.name":
+                    if value in must_accept_keywords:
+                        must_accept = True
                     curr_keyword["name"] = value
                 elif prefix == "item.fos.item.w":
                     curr_keyword["weight"] = float(value)
@@ -363,6 +400,8 @@ def compress_to_dict(max_lines_to_process = -1):
                 elif prefix == "item.authors.item" and event == "end_map":
                     curr_paper["authors"].append(curr_author)
                 elif prefix == "item.authors.item.name":
+                    if value in must_accept_authors:
+                        must_accept = True
                     curr_author["name"] = value
                 elif prefix == "item.authors.item.org":
                     curr_author["org"] = value
