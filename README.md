@@ -87,8 +87,7 @@ Next we rank the cities (with more than 250 papers written in them) according to
 | RGCN (100d) | 126 | 124 | 123 | 123 | 126 | 125 | 125 |
 
 ## Datasets
-- [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv
-Citation for the dataset:
+- [dblp.v12](https://www.aminer.org/citation): Contains papers and authors from arxiv. Citation:
 ```bibtex
 @INPROCEEDINGS{Tang:08KDD,
     AUTHOR = "Jie Tang and Jing Zhang and Limin Yao and Juanzi Li and Li Zhang and Zhong Su",
